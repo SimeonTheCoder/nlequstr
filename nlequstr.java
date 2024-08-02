@@ -227,8 +227,39 @@ public enum nlequstr implements Operation {
 
     public void printArg(ExpressionNode pointer) {
         varIndex++;
-        pointer.varName = "t" + varIndex;
-        System.out.println(pointer.varName + "=" + pointer.operation);
+        pointer.varName = varIndex;
+
+//        System.out.println("def " + pointer.varName);
+//        System.out.println("dpr" + pointer.varName + "=" + pointer.operation);
+        if(!Character.isDigit(pointer.operation.charAt(0)) && !"xy".contains(String.valueOf(pointer.operation.charAt(0)))) {
+            String before = pointer.operation.substring(0, pointer.operation.indexOf("_"));
+            String after = pointer.operation.substring(pointer.operation.indexOf("_") + 1);
+
+            System.out.println(before + " " + after);
+
+            switch (before) {
+                case "sin":
+                    System.out.println("cos " + after);
+                    varIndex++;
+                    break;
+                case "cos":
+                    System.out.println("sin " + after);
+                    System.out.println("mul . -1");
+                    System.out.println("dpr ... .");
+                    varIndex += 2;
+
+                    return;
+                case "log":
+                    System.out.println("div 1 " + after);
+                    varIndex++;
+                    break;
+            }
+
+            System.out.println("dpr .. .");
+            return;
+        }
+
+        System.out.println("dpr " + pointer.operation + " " + ((pointer.operation.equals("x") || pointer.operation.equals("y")) ? "param" : "param2"));
     }
 
     public void printCode(ExpressionNode pointer) {
@@ -243,10 +274,26 @@ public enum nlequstr implements Operation {
 
                 varIndex++;
 
-                pointer.varName = "t" + varIndex;
+                pointer.varName = varIndex;
+
+//                System.out.println(
+//                        pointer.varName + "=" + pointer.arg1.varName + pointer.operation + pointer.arg2.varName
+//                );
+
+//                System.out.println(
+//                        pointer.varName + "=" + ".".repeat(pointer.varName - pointer.arg1.varName) + pointer.operation + ".".repeat(pointer.varName - pointer.arg2.varName)
+//                );
+
+                String operation = switch (pointer.operation) {
+                    case "+" -> "dad";
+                    case "-" -> "dsb";
+                    case "*" -> "dml";
+                    case "/" -> "ddv";
+                    default -> "";
+                };
 
                 System.out.println(
-                        pointer.varName + "=" + pointer.arg1.varName + pointer.operation + pointer.arg2.varName
+                        operation + " " + ".".repeat(pointer.varName - pointer.arg1.varName) + " " + ".".repeat(pointer.varName - pointer.arg2.varName)
                 );
 
                 break;
@@ -285,14 +332,14 @@ public enum nlequstr implements Operation {
         public String operation;
         public double value;
 
-        public String varName;
+        public int varName;
         public ExpressionNode arg1, arg2;
 
         public ExpressionNode() {
             type = 0;
             value = 0.0;
 
-            varName = "";
+            varName = 0;
             operation = "\0";
 
             arg1 = null;
@@ -314,7 +361,7 @@ public enum nlequstr implements Operation {
             this.type = type;
             this.operation = operation;
 
-            varName = "";
+            varName = 0;
             operation = "\0";
 
             arg1 = null;
