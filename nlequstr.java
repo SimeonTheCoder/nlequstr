@@ -259,7 +259,19 @@ public enum nlequstr implements Operation {
             return;
         }
 
-        System.out.println("dpr " + pointer.operation + " " + ((pointer.operation.equals("x") || pointer.operation.equals("y")) ? "param" : "param2"));
+        String derivative;
+
+        if(Character.isDigit(pointer.operation.charAt(0))) {
+            derivative = "0";
+        } else {
+            if(pointer.operation.equals("x")) {
+                derivative = "param";
+            } else {
+                derivative = "param2";
+            }
+        }
+
+        System.out.println("dpr " + pointer.operation + " " + derivative);
     }
 
     public void printCode(ExpressionNode pointer) {
