@@ -4,12 +4,15 @@ import data.Array;
 import data.ObjType;
 import data.ReadableFile;
 import data.WritableFile;
+import nodes.Node;
 import operations.Operation;
 import parser.Interpreter;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Stack;
 
 public enum nlequstr implements Operation {
@@ -141,9 +144,12 @@ public enum nlequstr implements Operation {
             int index = (int) Interpreter.getValue(instruction[1], memory);
             String str = stringTable[index];
 
-            tokens = str.split(" ");
+            str = str.replace("(", "( ");
+            str = str.replace(")", " )");
 
-            ExpressionNode root = new ExpressionNode();
+            tokens = str.split("\\s+");
+
+            Node root = new Node();
 
             createTree(root);
             printCode(root);
@@ -162,62 +168,68 @@ public enum nlequstr implements Operation {
     public HashMap<String, Float> params;
 
     public void nextToken() {
-        currentToken = (tokenIndex < tokens.length) ? tokens[tokenIndex++] : "\0";
+        currentToken = (tokenIndex < tokens.length) ? tokens[tokenIndex++] : "";
     }
 
-    public void expression(ExpressionNode expressionNode) {
-        term(expressionNode);
+    public void expression(Node pointer) {
+        term(pointer);
 
         while (currentToken.equals("+") || currentToken.equals("-")) {
-            ExpressionNode operatorExpressionNode = new ExpressionNode(2, currentToken);
+            Node operatorNode = new Node();
+            operatorNode.instruction[0] = currentToken;
 
-            operatorExpressionNode.arg1 = new ExpressionNode(expressionNode);
-            nextToken();
-            operatorExpressionNode.arg2 = new ExpressionNode();
+            if(operatorNode.childNodes.size() == 2) {
+                operatorNode.childNodes.set(0, new Node(pointer));
+                operatorNode.childNodes.set(1, new Node());
+            } else {
+                operatorNode.childNodes.add(new Node(pointer));
+                nextToken();
+                operatorNode.childNodes.add(new Node());
+            }
 
-            term(operatorExpressionNode.arg2);
 
-            copyNode(operatorExpressionNode, expressionNode);
+            term(operatorNode.childNodes.get(1));
+
+            copyNode(operatorNode, pointer);
         }
     }
 
-    public void term(ExpressionNode expressionNode) {
-        factor(expressionNode);
+    public void term(Node pointer) {
+        factor(pointer);
 
         while (currentToken.equals("*") || currentToken.equals("/")) {
-            ExpressionNode operatorExpressionNode = new ExpressionNode(2, currentToken);
+            Node operatorNode = new Node();
+            operatorNode.instruction[0] = currentToken;
 
-            operatorExpressionNode.arg1 = new ExpressionNode(expressionNode);
+            operatorNode.childNodes.add(new Node(pointer));
             nextToken();
-            operatorExpressionNode.arg2 = new ExpressionNode();
+            operatorNode.childNodes.add(new Node());
 
-            factor(operatorExpressionNode.arg2);
+            factor(operatorNode.childNodes.get(1));
 
-            copyNode(operatorExpressionNode, expressionNode);
+            copyNode(operatorNode, pointer);
         }
     }
 
-    public void factor(ExpressionNode expressionNode) {
+    public void factor(Node pointer) {
         if (currentToken.equals("(")) {
             nextToken();
-            expression(expressionNode);
+            expression(pointer);
             nextToken();
         } else {
-            expressionNode.type = 0;
-            expressionNode.operation = currentToken;
+            pointer.instruction[0] = currentToken;
 
             nextToken();
         }
     }
 
-    public void copyNode(ExpressionNode source, ExpressionNode destination) {
-        destination.type = source.type;
-        destination.operation = source.operation;
-        destination.arg1 = source.arg1;
-        destination.arg2 = source.arg2;
+    public void copyNode(Node source, Node destination) {
+        destination.instruction[0] = source.instruction[0];
+
+        destination.childNodes.addAll(source.childNodes);
     }
 
-    public void createTree(ExpressionNode root) {
+    public void createTree(Node root) {
         tokenIndex = 0;
         nextToken();
         expression(root);
@@ -225,15 +237,15 @@ public enum nlequstr implements Operation {
 
     public int varIndex = 0;
 
-    public void printArg(ExpressionNode pointer) {
+    public void printArg(Node pointer) {
         varIndex++;
-        pointer.varName = varIndex;
+        pointer.id = varIndex;
 
 //        System.out.println("def " + pointer.varName);
 //        System.out.println("dpr" + pointer.varName + "=" + pointer.operation);
-        if(!Character.isDigit(pointer.operation.charAt(0)) && !"xy".contains(String.valueOf(pointer.operation.charAt(0)))) {
-            String before = pointer.operation.substring(0, pointer.operation.indexOf("_"));
-            String after = pointer.operation.substring(pointer.operation.indexOf("_") + 1);
+        if(!Character.isDigit(((String) pointer.instruction[0]).charAt(0)) && !"xy".contains((String) pointer.instruction[0])) {
+            String before = ((String) pointer.instruction[0]).substring(0, ((String) pointer.instruction[0]).indexOf("_"));
+            String after = ((String) pointer.instruction[0]).substring(((String) pointer.instruction[0]).indexOf("_") + 1);
 
             System.out.println(before + " " + after);
 
@@ -261,32 +273,33 @@ public enum nlequstr implements Operation {
 
         String derivative;
 
-        if(Character.isDigit(pointer.operation.charAt(0))) {
+        if(Character.isDigit(((String) pointer.instruction[0]).charAt(0))) {
             derivative = "0";
         } else {
-            if(pointer.operation.equals("x")) {
+            if(pointer.instruction[0].equals("x")) {
                 derivative = "param";
             } else {
                 derivative = "param2";
             }
         }
 
-        System.out.println("dpr " + pointer.operation + " " + derivative);
+        System.out.println("dpr " + pointer.instruction[0] + " " + derivative);
     }
 
-    public void printCode(ExpressionNode pointer) {
-        switch (pointer.type) {
+    public void printCode(Node pointer) {
+        switch (pointer.childNodes.size()) {
             case 0:
                 printArg(pointer);
                 break;
 
             case 2:
-                printCode(pointer.arg1);
-                printCode(pointer.arg2);
+                for (Node childNode : pointer.childNodes) {
+                    printCode(childNode);
+                }
 
                 varIndex++;
 
-                pointer.varName = varIndex;
+                pointer.id = varIndex;
 
 //                System.out.println(
 //                        pointer.varName + "=" + pointer.arg1.varName + pointer.operation + pointer.arg2.varName
@@ -296,7 +309,7 @@ public enum nlequstr implements Operation {
 //                        pointer.varName + "=" + ".".repeat(pointer.varName - pointer.arg1.varName) + pointer.operation + ".".repeat(pointer.varName - pointer.arg2.varName)
 //                );
 
-                String operation = switch (pointer.operation) {
+                String operation = switch ((String) pointer.instruction[0]) {
                     case "+" -> "dad";
                     case "-" -> "dsb";
                     case "*" -> "dml";
@@ -305,7 +318,7 @@ public enum nlequstr implements Operation {
                 };
 
                 System.out.println(
-                        operation + " " + ".".repeat(pointer.varName - pointer.arg1.varName) + " " + ".".repeat(pointer.varName - pointer.arg2.varName)
+                        operation + " " + ".".repeat(pointer.id - pointer.childNodes.get(0).id) + " " + ".".repeat(pointer.id - pointer.childNodes.get(1).id)
                 );
 
                 break;
@@ -336,48 +349,5 @@ public enum nlequstr implements Operation {
     }
 
     nlequstr() {
-    }
-
-    public class ExpressionNode {
-        public int type; // 0: leaf node, 2: operator node
-
-        public String operation;
-        public double value;
-
-        public int varName;
-        public ExpressionNode arg1, arg2;
-
-        public ExpressionNode() {
-            type = 0;
-            value = 0.0;
-
-            varName = 0;
-            operation = "\0";
-
-            arg1 = null;
-            arg2 = null;
-        }
-
-        public ExpressionNode(ExpressionNode expressionNode) {
-            this.type = expressionNode.type;
-            this.value = expressionNode.value;
-
-            this.varName = expressionNode.varName;
-            this.operation = expressionNode.operation;
-
-            this.arg1 = expressionNode.arg1;
-            this.arg2 = expressionNode.arg2;
-        }
-
-        public ExpressionNode(int type, String operation) {
-            this.type = type;
-            this.operation = operation;
-
-            varName = 0;
-            operation = "\0";
-
-            arg1 = null;
-            arg2 = null;
-        }
     }
 }
