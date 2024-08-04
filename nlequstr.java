@@ -178,7 +178,7 @@ public enum nlequstr implements Operation {
             Node operatorNode = new Node();
             operatorNode.instruction[0] = currentToken;
 
-            if(operatorNode.childNodes.size() == 2) {
+            if(operatorNode.childNodes.size() >= 2) {
                 operatorNode.childNodes.set(0, new Node(pointer));
                 operatorNode.childNodes.set(1, new Node());
             } else {
@@ -187,7 +187,6 @@ public enum nlequstr implements Operation {
                 operatorNode.childNodes.add(new Node());
             }
 
-
             term(operatorNode.childNodes.get(1));
 
             copyNode(operatorNode, pointer);
@@ -195,15 +194,42 @@ public enum nlequstr implements Operation {
     }
 
     public void term(Node pointer) {
-        factor(pointer);
+        if (!(currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos"))) {
+            factor(pointer);
+        } else {
+            pointer.instruction[0] = currentToken;
+        }
+
+        if (currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos")) {
+            while (currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos")) {
+                Node operatorNode = new Node();
+                operatorNode.instruction[0] = currentToken;
+
+                if(!operatorNode.childNodes.isEmpty()) {
+                    operatorNode.childNodes.set(0, new Node());
+                } else {
+                    nextToken();
+                    operatorNode.childNodes.add(new Node());
+                }
+
+                factor(operatorNode.childNodes.get(0));
+
+                copyNode(operatorNode, pointer);
+            }
+        }
 
         while (currentToken.equals("*") || currentToken.equals("/")) {
             Node operatorNode = new Node();
             operatorNode.instruction[0] = currentToken;
 
-            operatorNode.childNodes.add(new Node(pointer));
-            nextToken();
-            operatorNode.childNodes.add(new Node());
+            if(operatorNode.childNodes.size() == 2) {
+                operatorNode.childNodes.set(0, new Node(pointer));
+                operatorNode.childNodes.set(1, new Node());
+            } else {
+                operatorNode.childNodes.add(new Node(pointer));
+                nextToken();
+                operatorNode.childNodes.add(new Node());
+            }
 
             factor(operatorNode.childNodes.get(1));
 
@@ -226,6 +252,7 @@ public enum nlequstr implements Operation {
     public void copyNode(Node source, Node destination) {
         destination.instruction[0] = source.instruction[0];
 
+        destination.childNodes.clear();
         destination.childNodes.addAll(source.childNodes);
     }
 
@@ -288,11 +315,54 @@ public enum nlequstr implements Operation {
 
     public void printCode(Node pointer) {
         switch (pointer.childNodes.size()) {
-            case 0:
+            case 0: {
                 printArg(pointer);
                 break;
+            }
 
-            case 2:
+            case 1: {
+                printCode(pointer.childNodes.get(0));
+
+                String before = (String) pointer.instruction[0];
+
+                int increase = 0;
+
+                switch (before) {
+                    case "sin":
+                        System.out.println("sin .");
+                        System.out.println("cos ..");
+                        System.out.println("mul . ...1");
+
+                        varIndex+=3;
+                        increase = 3;
+
+                        break;
+                    case "cos":
+                        System.out.println("cos .");
+                        System.out.println("sin ..1");
+                        System.out.println("mul . -1");
+                        System.out.println("dpr ... .");
+                        varIndex += 3;
+                        increase = 3;
+
+                        return;
+                    case "log":
+                        System.out.println("log .");
+                        System.out.println("div 1 ..");
+                        System.out.println("mul . ...1");
+
+                        varIndex+=3;
+                        increase = 3;
+
+                        break;
+                }
+
+                System.out.println("dpr " + ".".repeat(increase) + " .");
+
+                break;
+            }
+
+            case 2: {
                 for (Node childNode : pointer.childNodes) {
                     printCode(childNode);
                 }
@@ -322,6 +392,7 @@ public enum nlequstr implements Operation {
                 );
 
                 break;
+            }
         }
     }
 
