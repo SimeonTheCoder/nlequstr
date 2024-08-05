@@ -194,14 +194,16 @@ public enum nlequstr implements Operation {
     }
 
     public void term(Node pointer) {
-        if (!(currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos"))) {
+        boolean oneArgFunc = (currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos") || currentToken.equals("exp"));
+
+        if (!oneArgFunc) {
             factor(pointer);
         } else {
             pointer.instruction[0] = currentToken;
         }
 
-        if (currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos")) {
-            while (currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos")) {
+        if (oneArgFunc) {
+            while (oneArgFunc) {
                 Node operatorNode = new Node();
                 operatorNode.instruction[0] = currentToken;
 
@@ -215,6 +217,7 @@ public enum nlequstr implements Operation {
                 factor(operatorNode.childNodes.get(0));
 
                 copyNode(operatorNode, pointer);
+                oneArgFunc = (currentToken.equals("log") || currentToken.equals("sin") || currentToken.equals("cos") || currentToken.equals("exp"));
             }
         }
 
@@ -304,9 +307,9 @@ public enum nlequstr implements Operation {
             derivative = "0";
         } else {
             if(pointer.instruction[0].equals("x")) {
-                derivative = "param";
+                derivative = "1";
             } else {
-                derivative = "param2";
+                derivative = "0 1";
             }
         }
 
@@ -333,7 +336,7 @@ public enum nlequstr implements Operation {
                         System.out.println("cos ..");
                         System.out.println("mul . ...1");
 
-                        varIndex+=3;
+                        varIndex += 3;
                         increase = 3;
 
                         break;
@@ -351,7 +354,16 @@ public enum nlequstr implements Operation {
                         System.out.println("div 1 ..");
                         System.out.println("mul . ...1");
 
-                        varIndex+=3;
+                        varIndex += 3;
+                        increase = 3;
+
+                        break;
+                    case "exp":
+                        System.out.println("exp .");
+                        System.out.println("exp ..");
+                        System.out.println("mul . ...1");
+
+                        varIndex += 3;
                         increase = 3;
 
                         break;
